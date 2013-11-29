@@ -1,0 +1,30 @@
+#!/bin/bash
+if [ -z "$3" ];then
+        echo "Usage: gre-tun-probe bridge gre_num out_port [SOURCE IP] [DEST IP] [DEST MAC]"
+        echo "example: gre-tun-probe br-tun 0x1 2"
+        exit -1
+fi
+function cleanup(){
+        ovs-vsctl del-port $1 ${veths[0]}
+        ip link del ${veths[0]}
+}
+trap cleanup INT
+trap cleanup HUP
+ip link add type veth
+veths=(`ip l |tail -n 4|egrep -o "veth[0-9]+"`)
+#echo $veths
+ip link set up dev ${veths[0]}
+ip link set up dev ${veths[1]}
+
+#240.0.0.0 - experimental block ( == free for use for probing)
+ip a a 240.0.0.1/24 dev ${veths[1]}
+ovs-vsctl add-port $1 ${veths[0]}
+
+#TODO:
+#get OVS port number for our veth
+#set up ofctl rule to warp to GRE tunnel(s)
+#send nping
+
+
+cleanup
+

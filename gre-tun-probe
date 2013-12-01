@@ -34,7 +34,7 @@ ip link set up dev ${veths[1]}
 
 echo Adding fake IP to ${veths[0]}
 ip a a 240.0.0.1/24 dev ${veths[1]} #240.0.0.0 - experimental block ( == free for use for probing)
-echo Adding ${veths[1]} to $bridge
+echo Adding ${veths[0]} to $bridge
 ovs-vsctl add-port $bridge ${veths[0]}
 
 #TODO:
@@ -44,7 +44,28 @@ rule_num=$((RANDOM + 1000)) #neutron use lower rules number
 rule="priority=$rule_num,in_port=$port actions=set_tunnel:$gre,output:$out"
 echo will apply rule $rule to bridge $bridge
 ovs-ofctl add-flow $bridge "$rule"
-#send nping
-sleep 1000
+
+
+#setup done, preparing nping args
+test -n "$4" && source_ip='--source-ip $4'
+if [ -n "$5"] then
+    dest_ip="--dest-ip $5"
+else
+    dest_ip="--dest-ip 240.0.0.2" #again, experimental range, should not be used anyone but me
+fi
+
+if [ -n "$6" ] then
+    dest_mac="--dest-mac=$6"
+else
+    dest_mac="--dest-mac=10:0b:a9:bd:26:a8" #my laptop's wifi MAC. Should never appear in real server wired networks
+fi
+
+if [-n "$7" ] then
+    count="-c $7"
+else
+    count="-c 1"
+
+#calling nping
+nping $count --icmp --icmp-type 0 $source_ip $dest_ip $dest_mac -e ${veth[0]}
 cleanup
 

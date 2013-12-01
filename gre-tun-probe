@@ -5,8 +5,15 @@ function quit() {
 }
 
 function cleanup(){
-        ovs-vsctl del-port $1 ${veths[0]}
+    test -z "$clean" || return
+    echo -e "\nCleaning up"
+    echo Removing rules for in_port=$port from $bridge
+    ovs-ofctl del-flows $bridge "in_port=$port"
+        echo  "Removing ${veths[0]} from $bridge"
+    ovs-vsctl del-port $bridge ${veths[0]}
+    echo "Removing ${veths[*]}"
         ip link del ${veths[0]}
+    clean="already" #protection againts double call in buggy bashes
 }
 
 test -n "$3" || quit "Usage: gre-tun-probe bridge gre_num out_port [SOURCE IP] [DEST IP] [DEST MAC] [number of probes]\nexample: gre-tun-probe br-tun 0x1 2"
@@ -18,22 +25,26 @@ trap cleanup HUP
 bridge=$1
 gre=$2
 out=$3
+echo "Setting up:"
 ip link add type veth
 veths=(`ip l |tail -n 4|egrep -o "veth[0-9]+"`)
-#echo $veths
+echo Create pair of veth interfaces: ${veths[*]}
 ip link set up dev ${veths[0]}
 ip link set up dev ${veths[1]}
 
+echo Adding fake IP to ${veths[0]}
 ip a a 240.0.0.1/24 dev ${veths[1]} #240.0.0.0 - experimental block ( == free for use for probing)
+echo Adding ${veths[1]} to $bridge
 ovs-vsctl add-port $bridge ${veths[0]}
 
 #TODO:
-port=`ovs-ofctl dump-ports-desc $1|grep ${veths[0]}|head -n 1|awk -F '(' '{print $1}'` #assigned port number to the last port in bridge (race prone!)
+port=`ovs-ofctl dump-ports-desc $bridge|grep ${veths[0]}|head -n 1|awk -F '(' '{print $1}'` #assigned port number to the last port in bridge (race prone!)
+echo "${veths[0]} is using port $port in bridge $bridge"
 rule_num=$((RANDOM + 1000)) #neutron use lower rules number
-ovs-ofctl add-flow $bridge "priority=$rule_num,in_port=$port actions=set_tunnel:$gre,output:$out"
-#set up ofctl rule to warp to GRE tunnel(s)
+rule="priority=$rule_num,in_port=$port actions=set_tunnel:$gre,output:$out"
+echo will apply rule $rule to bridge $bridge
+ovs-ofctl add-flow $bridge "$rule"
 #send nping
-
-
+sleep 1000
 cleanup
 

@@ -1,13 +1,18 @@
 #!/bin/bash
-if [ -z "$3" ];then
-        echo "Usage: gre-tun-probe bridge gre_num out_port [SOURCE IP] [DEST IP] [DEST MAC]"
-        echo "example: gre-tun-probe br-tun 0x1 2"
+function quit() {
+        echo -e $1
         exit -1
-fi
+}
+
 function cleanup(){
         ovs-vsctl del-port $1 ${veths[0]}
         ip link del ${veths[0]}
 }
+
+test -n "$3" || quit "Usage: gre-tun-probe bridge gre_num out_port [SOURCE IP] [DEST IP] [DEST MAC\nexample: gre-tun-probe br-tun 0x1 2"
+test -x "`which ovs-vsctl`"|| quit "openvswitch not installed. Is this openstack host?"
+test -x "`which nping`" || quit "nping not found. Nping can be found in newer verison of nmap. Unfortunately, Ubuntu 12.04's nmap is too old, upgrade it to raring/saucy/trusty"
+test -x "`which ip`"|| quit "iproute2's ip command not found. This is not normal."
 trap cleanup INT
 trap cleanup HUP
 ip link add type veth
@@ -21,6 +26,7 @@ ip a a 240.0.0.1/24 dev ${veths[1]}
 ovs-vsctl add-port $1 ${veths[0]}
 
 #TODO:
+probe=`ovs-ofctl dump-ports-desc $1|grep ${veths[0]}|head -n 1|awk -F '(' '{print $1}'`
 #get OVS port number for our veth
 #set up ofctl rule to warp to GRE tunnel(s)
 #send nping

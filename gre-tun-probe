@@ -16,7 +16,7 @@ function cleanup(){
     clean="already" #protection againts double call in buggy bashes
 }
 
-test -n "$3" || quit "Usage: gre-tun-probe bridge gre_num out_port [SOURCE IP] [DEST IP] [DEST MAC] [number of probes]\nexample: gre-tun-probe br-tun 0x1 2"
+test -n "$3" || quit "Usage: gre-tun-probe bridge gre_num out_port [SOURCE IP] [DEST IP] [DEST MAC] [number of probes]\nexamples:\n\tgre-tun-probe br-tun 0x1 2\ngre-tun-probe br-tun 0x5 15 192.168.1.3 192.168.1.1 10:0b:a9:bd:26:a8 200"
 test -x "`which ovs-vsctl`"|| quit "openvswitch not installed. Is this openstack host?"
 test -x "`which nping`" || quit "nping not found. Nping can be found in newer verison of nmap. Unfortunately, Ubuntu 12.04's nmap is too old, upgrade it to raring/saucy/trusty"
 test -x "`which ip`"|| quit "iproute2's ip command not found. This is not normal."

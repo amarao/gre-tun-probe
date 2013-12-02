@@ -15,7 +15,7 @@ To forcefully emulate traffic from guests:
 
 ./gre-tun-probe br-tun 0x1 2
 or
-./gre-tun-probe br-tun 0x1 2 192.168.1.1 192.168.1.2 10:0b:a9:bd:26:a8 100
+./gre-tun-probe -c 100 br-tun 0x1 2 192.168.1.1 192.168.1.2 10:0b:a9:bd:26:a8 
 (send 100 packets from 192.168.1.1 to 192.168.1.2 with dest. mac 10:0b:a9:bd:26:a8 via bridge br-tun with gre label 0x1 in output port #2).
 
 It relies on nping utility, which is shipped with recent version of nmap (recent: newer than precise), some upgrade may require. 

@@ -16,18 +16,22 @@ function cleanup(){
     clean="already" #protection againts double call in buggy bashes
 }
 
-test -n "$3" || quit "Usage: gre-tun-probe bridge gre_num out_port [SOURCE IP] [DEST IP] [DEST MAC] [number of probes]\nexamples:\n\tgre-tun-probe br-tun 0x1 2\ngre-tun-probe br-tun 0x5 15 192.168.1.3 192.168.1.1 10:0b:a9:bd:26:a8 200"
-test -x "`which ovs-vsctl`"|| quit "openvswitch not installed. Is this openstack host?"
+test -n "$3" || quit "Usage: gre-tun-probe [-c number of probes] bridge gre_num out_port [SOURCE IP] [DEST IP] [DEST MAC] \nexamples:\n\tgre-tun-probe br-tun 0x1 2\n\tgre-tun-probe -c 0 br-tun 0x5 15 192.168.1.3 192.168.1.1 10:0b:a9:bd:26:a8 200\n-c number of probes - amount of packets ot send, 0 means endless, Ctrl-C to break\nbridge - openvswitch bridge name (f.e. br-tun, br-int)\ngre_num - GRE tunnel number, f.e. 0x1, 0x100, or just 5\nout_port - numeric port to send GRE traffic within OVS bridge. Can be observed with ovs-ofctl dump-port-desc br_name\nSOURCE IP - source ip in generated icmp packets\nDEST IP - destignation ip in generated icmp packets\nDEST MAC - destignation MAC address"
+test -x "`which ovs-vsctl`"|| quit "openvswitch is not installed. Is this openstack host?"
 test -x "`which nping`" || quit "nping not found. Nping can be found in newer verison of nmap. Unfortunately, Ubuntu 12.04's nmap is too old, upgrade it to raring/saucy/trusty"
 test -x "`which ip`"|| quit "iproute2's ip command not found. This is not normal."
 trap cleanup INT
 trap cleanup HUP
+if [ "$1" = "-c" ]; then
+    count="-c $2"
+    shift 2
+fi
 bridge=$1
 gre=$2
 out=$3
 echo "Setting up:"
 ip link add type veth
-veths=(`ip l |tail -n 4|egrep -o "veth[0-9]+"`)
+veths=(`ip l |tail -n 4|egrep -o "veth[0-9]+"`) #race for interface creations here. Should never be used on non-disabled node
 echo Create pair of veth interfaces: ${veths[*]}
 ip link set up dev ${veths[0]}
 ip link set up dev ${veths[1]}
@@ -63,12 +67,6 @@ else
     dest_mac="--dest-mac 10:0b:a9:bd:26:a8" #my laptop's wifi MAC. Should never appear in real server wired networks
 fi
 
-if [ -n "$7" ]
-then
-    count="-c $7"
-else
-    count="-c 1"
-fi
 #calling nping
 echo "will call nping $count --icmp --icmp-type 0 $source_ip $dest_ip $dest_mac -e ${veths[1]}"
 nping $count --icmp --icmp-type 0 $source_ip $dest_ip $dest_mac -e ${veths[1]}

@@ -20,15 +20,19 @@ test -n "$3" || quit "Usage: gre-tun-probe [-c number of probes] bridge gre_num 
 test -x "`which ovs-vsctl`"|| quit "openvswitch is not installed. Is this openstack host?"
 test -x "`which nping`" || quit "nping not found. Nping can be found in newer verison of nmap. Unfortunately, Ubuntu 12.04's nmap is too old, upgrade it to raring/saucy/trusty"
 test -x "`which ip`"|| quit "iproute2's ip command not found. This is not normal."
+
 trap cleanup INT
 trap cleanup HUP
+
 if [ "$1" = "-c" ]; then
     count="-c $2"
     shift 2
 fi
+
 bridge=$1
 gre=$2
 out=$3
+
 echo "Setting up:"
 ip link add type veth
 veths=(`ip l |tail -n 4|egrep -o "veth[0-9]+"`) #race for interface creations here. Should never be used on non-disabled node
@@ -70,5 +74,6 @@ fi
 #calling nping
 echo "will call nping $count --icmp --icmp-type 0 $source_ip $dest_ip $dest_mac -e ${veths[1]}"
 nping $count --icmp --icmp-type 0 $source_ip $dest_ip $dest_mac -e ${veths[1]}
+
 cleanup
 
